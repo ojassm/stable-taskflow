@@ -17,8 +17,7 @@ class Topology {
     template <typename P, typename C>
     Topology(Taskflow&, P&&, C&&);
     void set_cancel();
-    std::atomic_bool _is_cancel=false;
-    std::atomic_bool _is_torn=false;
+    
   private:
 
     Taskflow& _taskflow;
@@ -31,6 +30,8 @@ class Topology {
     std::function<void()> _call;
     
     std::atomic<size_t> _join_counter {0};
+    bool _is_cancel {0};
+    bool _is_torn {0};
     
 };
 
@@ -44,7 +45,7 @@ inline Topology::Topology(Taskflow& tf, P&& p, C&& c):
 
 inline void Topology::set_cancel(){
   std::cout<<"\nCANCEL CALLED IN TPG\n";
-  _is_cancel=true;
+  _is_cancel=1;
   return;
 }
 

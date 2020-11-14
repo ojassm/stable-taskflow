@@ -354,6 +354,7 @@ inline void Taskflow::_dump(
 
 template <typename T>
 class Future : public std::future<T> {
+  friend class Node;
   public:
     //future object to store futre object returned by executor.run_until
     std::future<T> future_obj;
@@ -383,6 +384,7 @@ class Future : public std::future<T> {
 
     //function for running get method of future object
     //template<typename T>
+    //template <class _Res>
     T get() {
       return future_obj.get();
     }

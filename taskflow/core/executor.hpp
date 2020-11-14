@@ -4,6 +4,7 @@
 #include "notifier.hpp"
 #include "observer.hpp"
 #include "taskflow.hpp"
+#include <iostream>
 
 /** 
 @file executor.hpp
@@ -469,14 +470,15 @@ inline void Executor::_exploit_task(Worker& w, Node*& t) {
     }
 
     while(t) {
-      _invoke(w, t);
-      //std::cout<<t->_topology->_is_cancel<<"\n";
+      
+            _invoke(w, t);
+            //std::cout<<t->_topology->_is_cancel<<"\n";
 
-       if (t->_topology->_is_cancel ==true){
+            if (t->_topology->_is_cancel ==true){
             std::cout<<"\nWHY AM I INSIDE THIS?\n";
-      //      std::cout<<t->_topology->_is_cancel<<"\n";
-      //     //std::cout<<t->_topology->_is_torn<<"\n";
-      //      _tear_cancelled_topology(t->_topology);
+            //      std::cout<<t->_topology->_is_cancel<<"\n";
+            //     //std::cout<<t->_topology->_is_torn<<"\n";
+            //      _tear_cancelled_topology(t->_topology);
         }
       //if(t->_parent == nullptr) {
       //  if(t->_topology->_join_counter.fetch_sub(1) == 1) {
@@ -756,19 +758,21 @@ inline void Executor::_invoke(Worker& worker, Node* node) {
         _schedule(s);
       }
     }
-
+    std::cout<<node->_topology->_is_cancel<<"\nbefore tear down done in invoke\n";
     // tear down topology if the node is the last one
     if(node->_parent == nullptr) {
       if(node->_topology->_join_counter.fetch_sub(1) == 1) {
         //std::cout<<node->_topology->_is_cancel;
         _tear_down_topology(node->_topology);
         std::cout<<node->_topology->_is_cancel<<"tear down done in invoke\n";
+        
       }
     }
     else {  // joined subflow
       node->_parent->_join_counter.fetch_sub(1);
     }
   }
+  std::cout<<node->_topology->_is_cancel<<"after invoke\n";
 }
 
 // Procedure: _observer_prologue
@@ -1129,7 +1133,7 @@ inline void Executor::_tear_down_topology(Topology* tpg) {
       //std::cout<<tpg->_is_cancel<<"after unlocked\n";
       // We set the promise in the end in case taskflow leaves before taskflow
       p.set_value();
-      //std::cout<<tpg->_is_cancel<<"after set kiya bey single\n";
+      std::cout << tpg->_is_cancel << "after set kiya bey single\n";
 
       _decrement_topology_and_notify();
       //std::cout<<"tear down done for 1 tpg\n";
@@ -1185,10 +1189,10 @@ inline void Executor::_tear_cancelled_topology(Topology* tpg) {
       p.set_value();
 
       _decrement_topology_and_notify();
-      
     }
   }
-  else {f._mtx.unlock();}
+  else {
+    f._mtx.unlock();}
 }
 
 
