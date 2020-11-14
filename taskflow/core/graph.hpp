@@ -169,7 +169,7 @@ class Node {
     size_t num_weak_dependents() const;
     
     const std::string& name() const;
-    std::atomic<bool> async_cancelled = false;
+    std::atomic<bool> async_cancelled  {false};
   private:
 
     std::string _name;

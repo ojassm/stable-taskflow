@@ -268,7 +268,6 @@ class Executor {
     //void _invoke_cudaflow_task_external(cudaFlow&, P&&, bool);
 };
 
-
 // Constructor
 inline Executor::Executor(size_t N) : 
   _VICTIM_BEG {0},
@@ -298,10 +297,12 @@ inline Executor::~Executor() {
   _done = true;
 
   _notifier.notify(true);
+
   
   for(auto& t : _threads){
     t.join();
   } 
+  //std::cout<<"destruct exec";
   
   // flush the default observer
   _flush_tfprof();
@@ -406,10 +407,8 @@ inline void Executor::_spawn(size_t N) {
           break;
         }
       }
-      
     }, std::ref(_workers[id]));     
   }
-
 }
 
 // Function: _explore_task
@@ -471,11 +470,14 @@ inline void Executor::_exploit_task(Worker& w, Node*& t) {
 
     while(t) {
       _invoke(w, t);
-      
+      //std::cout<<t->_topology->_is_cancel<<"\n";
 
-      if (t->_topology->_is_cancel && t->_topology->_is_torn!=true){
-           _tear_cancelled_topology(t->_topology);
-      }
+       if (t->_topology->_is_cancel ==true){
+            std::cout<<"\nWHY AM I INSIDE THIS?\n";
+      //      std::cout<<t->_topology->_is_cancel<<"\n";
+      //     //std::cout<<t->_topology->_is_torn<<"\n";
+      //      _tear_cancelled_topology(t->_topology);
+        }
       //if(t->_parent == nullptr) {
       //  if(t->_topology->_join_counter.fetch_sub(1) == 1) {
       //    _tear_down_topology(t->_topology);
@@ -487,7 +489,6 @@ inline void Executor::_exploit_task(Worker& w, Node*& t) {
 
       t = w.wsq.pop();
     }
-
     --_num_actives;
   }
 }
@@ -601,7 +602,7 @@ inline size_t Executor::num_observers() const {
 // The main procedure to schedule a give task node.
 // Each task node has two types of tasks - regular and subflow.
 inline void Executor::_schedule(Node* node) {
-  
+  //std::cout<<"schedule node";
   //assert(_workers.size() != 0);
 
   // caller is a worker to this pool
@@ -625,7 +626,7 @@ inline void Executor::_schedule(Node* node) {
 // The main procedure to schedule a set of task nodes.
 // Each task node has two types of tasks - regular and subflow.
 inline void Executor::_schedule(std::vector<Node*>& nodes) {
-
+  //std::cout<<"schedule node list";
   //assert(_workers.size() != 0);
   
   // We need to cacth the node count to avoid accessing the nodes
@@ -723,6 +724,8 @@ inline void Executor::_invoke(Worker& worker, Node* node) {
   // This must be done before scheduling the successors, otherwise this might cause 
   // race condition on the _dependents
   if (!node->_topology->_is_cancel){
+
+    //std::cout<<"going ahead";
     if(node->_has_state(Node::BRANCHED)) {
       node->_join_counter = node->num_strong_dependents();
     }
@@ -757,7 +760,9 @@ inline void Executor::_invoke(Worker& worker, Node* node) {
     // tear down topology if the node is the last one
     if(node->_parent == nullptr) {
       if(node->_topology->_join_counter.fetch_sub(1) == 1) {
+        //std::cout<<node->_topology->_is_cancel;
         _tear_down_topology(node->_topology);
+        std::cout<<node->_topology->_is_cancel<<"tear down done in invoke\n";
       }
     }
     else {  // joined subflow
@@ -1055,7 +1060,7 @@ inline void Executor::_set_up_topology(Topology* tpg) {
 
 // Function: _tear_down_topology
 inline void Executor::_tear_down_topology(Topology* tpg) {
-
+  //std::cout<<"\ntear\n";
   auto &f = tpg->_taskflow;
 
   //assert(&tpg == &(f._topologies.front()));
@@ -1077,7 +1082,7 @@ inline void Executor::_tear_down_topology(Topology* tpg) {
     }
 
     f._mtx.lock();
-
+    //std::cout<<tpg->_is_cancel<<"in tear bc\n";
     // If there is another run (interleave between lock)
     if(f._topologies.size() > 1) {
 
@@ -1085,7 +1090,9 @@ inline void Executor::_tear_down_topology(Topology* tpg) {
 
       // Set the promise
       tpg->_promise.set_value();
+      std::cout<<tpg->_is_cancel<<"after set kiya bey multiple\n";
       f._topologies.pop_front();
+      //std::cout<<"popped from multiple\n";
       f._mtx.unlock();
       
       // decrement the topology but since this is not the last we don't notify
@@ -1117,43 +1124,47 @@ inline void Executor::_tear_down_topology(Topology* tpg) {
       auto bc{ std::move( tpg->_call ) };
 
       f._topologies.pop_front();
-
+      //std::cout<<tpg->_is_cancel<<"after popped from one\n";
       f._mtx.unlock();
-
+      //std::cout<<tpg->_is_cancel<<"after unlocked\n";
       // We set the promise in the end in case taskflow leaves before taskflow
       p.set_value();
+      //std::cout<<tpg->_is_cancel<<"after set kiya bey single\n";
 
       _decrement_topology_and_notify();
+      //std::cout<<"tear down done for 1 tpg\n";
     }
   }
 }
 
 
 //tears down a cancelled topology. there is no necessity to check for predicate or callback as the topology is cancelled.
+
 inline void Executor::_tear_cancelled_topology(Topology* tpg) {
 
   auto &f = tpg->_taskflow;
-  
+  //std::cout<<"tear down cancelled\n";
   f._mtx.lock();
-  while (tpg->_is_torn!=true){
-    // If there is another run (interleave between lock)
-  if(f._topologies.size() > 1) {
+  
+  if (tpg->_is_torn!=true){
+      // If there is another run (interleave between lock)
+    if(f._topologies.size() > 1) {
 
-    //assert(tpg->_join_counter == 0);
+      //assert(tpg->_join_counter == 0);
 
       // Set the promise
-    tpg->_promise.set_value();
-    tpg->_is_torn=true;
-    f._topologies.pop_front();
-    f._mtx.unlock();
-      
-      // decrement the topology but since this is not the last we don't notify
-    _decrement_topology();
+      tpg->_promise.set_value();
+      tpg->_is_torn=true;
+      f._topologies.pop_front();
+      f._mtx.unlock();
+        
+        // decrement the topology but since this is not the last we don't notify
+      _decrement_topology();
 
-    tpg = &(f._topologies.front());
+      tpg = &(f._topologies.front());
 
-    _set_up_topology(tpg);
-    _schedule(tpg->_sources);
+      _set_up_topology(tpg);
+      _schedule(tpg->_sources);
 
   }
   else {
@@ -1174,9 +1185,12 @@ inline void Executor::_tear_cancelled_topology(Topology* tpg) {
       p.set_value();
 
       _decrement_topology_and_notify();
+      
     }
   }
+  else {f._mtx.unlock();}
 }
+
 
 
 // Function: run_until
@@ -1241,6 +1255,7 @@ inline void Executor::_decrement_topology_and_notify() {
   if(--_num_topologies == 0) {
     _topology_cv.notify_all();
   }
+  //std::cout<<"decrement notify done\n";
 }
 
 // Procedure: _decrement_topology

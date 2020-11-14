@@ -353,21 +353,20 @@ inline void Taskflow::_dump(
 }
 
 template <typename T>
-class Future  : public std::future<T> {
-  friend class Topology;
+class Future : public std::future<T> {
   public:
     //future object to store futre object returned by executor.run_until
     std::future<T> future_obj;
 
     //function for running wait_until method of future object
     template <class Clock, class Duration>
-    std::future_status wait_until (const std::chrono::time_point<Clock,Duration>& abs_time) const {
+    auto wait_until (const std::chrono::time_point<Clock,Duration>& abs_time) const {
       return future_obj.wait_until(abs_time);
     }
 
     //function for running wait_for method of future object
     template <class Rep, class Period>
-    std::future_status wait_for (const std::chrono::duration<Rep,Period>& rel_time) const{
+    auto wait_for (const std::chrono::duration<Rep,Period>& rel_time) const{
       return future_obj.wait_for( rel_time);
     }
     
@@ -383,23 +382,24 @@ class Future  : public std::future<T> {
     }
 
     //function for running get method of future object
-    template<class _Res> 
-    _Res get() {
+    //template<typename T>
+    T get() {
       return future_obj.get();
     }
 
     //function for running share method of future object
-    std::shared_future<T> share(){
+    auto share(){
       return future_obj.share();
     }
 
     //operator equivalent to "=" operator of future object
-    std::future<T> operator = (std::future<T>&& rhs) noexcept{
+    auto operator=(std::future<T>&& rhs) noexcept{
       future_obj=rhs;
     }
 
     //method for setting is_cancel variable of the topology to true
     void cancel(){
+      std::cout<<"\nCANCEL CALLED\n";
       _topology->set_cancel();
       return;
     }
