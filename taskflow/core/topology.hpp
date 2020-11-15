@@ -1,6 +1,6 @@
 #pragma once
 
-#include "taskflow.hpp"
+//#include "taskflow.hpp"
 
 namespace tf {
 
@@ -16,8 +16,9 @@ class Topology {
 
     template <typename P, typename C>
     Topology(Taskflow&, P&&, C&&);
-    void set_cancel();
-    
+    std::atomic<bool> is_cancel {false};
+    std::atomic<bool> is_torn {false};
+
   private:
 
     Taskflow& _taskflow;
@@ -30,9 +31,6 @@ class Topology {
     std::function<void()> _call;
     
     std::atomic<size_t> _join_counter {0};
-    bool _is_cancel {0};
-    bool _is_torn {0};
-    
 };
 
 // Constructor
@@ -42,13 +40,5 @@ inline Topology::Topology(Taskflow& tf, P&& p, C&& c):
   _pred {std::forward<P>(p)},
   _call {std::forward<C>(c)} {
 }
-
-inline void Topology::set_cancel(){
-  std::cout<<"\nCANCEL CALLED IN TPG\n";
-  _is_cancel=1;
-  return;
-}
-
-
 
 }  // end of namespace tf. ----------------------------------------------------

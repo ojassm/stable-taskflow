@@ -352,9 +352,11 @@ inline void Taskflow::_dump(
   }
 }
 
+
 template <typename T>
 class Future : public std::future<T> {
   friend class Node;
+  friend class Topology;
   public:
     //future object to store futre object returned by executor.run_until
     std::future<T> future_obj;
@@ -401,8 +403,7 @@ class Future : public std::future<T> {
 
     //method for setting is_cancel variable of the topology to true
     void cancel(){
-      std::cout<<"\nCANCEL CALLED\n";
-      _topology->set_cancel();
+      _topology->is_cancel=true;
       return;
     }
 
@@ -425,10 +426,11 @@ class Future : public std::future<T> {
     }
 
   private:
-    Topology* _topology;
-    Node* _node;
+    Topology* _topology {nullptr};
+    Node* _node {nullptr};
 
 };
+
 
 }  // end of namespace tf. ---------------------------------------------------
 
